@@ -1,9 +1,8 @@
-
-
-from numpy import extract
 from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
+import pandas as pd
 
 dag = DAG(
     dag_id="etl-pipeline",
@@ -16,15 +15,18 @@ def _extract():
     pass
 
 def _transform():
-    pass
+    dados = pd.read_csv("/opt/airflow/scripts/data/estados_br.csv")
+    dados_transformado = dados['Estados'].str.upper()
+    dados_transformado.to_csv("/opt/airflow/scripts/data/estados_transformados.csv", index=False)
 
 def _load():
-    pass
+    dados_final = pd.read_csv("/opt/airflow/scripts/data/estados_transformados.csv")
+    print(dados_final.head(10))
 
 
-extract_task = PythonOperator(
-    task_id="Extract_Dataset",
-    python_callable=_extract,
+extract_task =  BashOperator(
+    task_id='Extract_Pandas_Data',
+    bash_command='python /opt/airflow/scripts/model/extract.py',
     dag=dag
 )
 
@@ -39,6 +41,5 @@ load_task = PythonOperator(
     python_callable=_load,
     dag=dag
 )
-
 
 extract_task >> transform_task >> load_task
